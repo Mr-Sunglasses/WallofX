@@ -1,0 +1,16 @@
+services:
+  wallofx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wallofx-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./wallofx/static/output:/app/wallofx/static/output
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
