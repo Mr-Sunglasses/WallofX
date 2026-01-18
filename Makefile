@@ -15,18 +15,18 @@ run: ## Run the bot locally
 	uv run run.py
 
 build-docker: ## Build Docker image
-	docker-compose build
+	docker compose build
 
 run-docker: ## Run the bot with Docker
-	docker-compose up -d
+	docker compose up -d
 
 stop-docker: ## Stop Docker containers
-	docker-compose down
+	docker compose down
 
 restart-docker: stop-docker run-docker ## Restart Docker containers
 
 logs-docker: ## View Docker logs
-	docker-compose logs -f
+	docker compose logs -f
 
 clean: ## Clean generated files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
