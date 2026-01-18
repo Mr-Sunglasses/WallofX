@@ -15,443 +15,275 @@ logger = logging.getLogger(__name__)
 class ImageGenerator:
     """Generate beautiful images from tweet data."""
 
-    # Color themes
     THEMES = {
         'dark': {
             'background': (0, 0, 0),
             'text': (231, 233, 234),
-            'secondary_text': (113, 118, 123),
+            'secondary': (113, 118, 123),
             'link': (29, 155, 240),
-            'accent': (29, 155, 240),
-            'divider': (56, 68, 77),
-            'icon': (113, 118, 123),
+            'divider': (47, 51, 54),
         },
         'dim': {
-            'background': (21, 24, 28),
-            'text': (247, 249, 249),
-            'secondary_text': (139, 152, 165),
+            'background': (21, 32, 43),
+            'text': (255, 255, 255),
+            'secondary': (136, 153, 166),
             'link': (29, 155, 240),
-            'accent': (29, 155, 240),
             'divider': (56, 68, 77),
-            'icon': (139, 152, 165),
         },
         'light': {
             'background': (255, 255, 255),
             'text': (15, 20, 25),
-            'secondary_text': (83, 100, 113),
+            'secondary': (83, 100, 113),
             'link': (29, 155, 240),
-            'accent': (29, 155, 240),
-            'divider': (180, 185, 190),
-            'icon': (83, 100, 113),
+            'divider': (207, 217, 222),
         },
     }
 
     def __init__(self, theme: str = 'dark'):
-        """Initialize the image generator."""
         self.theme = self.THEMES.get(theme, self.THEMES['dark'])
         self.theme_name = theme
         self.output_dir = 'wallofx/static/output'
         os.makedirs(self.output_dir, exist_ok=True)
-        logger.info(f"ImageGenerator initialized with theme '{theme}'")
-
-    def _draw_x_logo(self, draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-        """Draw an X logo."""
-        color = self.theme['text']
-        lw = max(3, size // 8)
-        # Draw X
-        draw.line([(x, y), (x + size, y + size)], fill=color, width=lw)
-        draw.line([(x + size, y), (x, y + size)], fill=color, width=lw)
-
-    def _draw_verified_badge(self, draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-        """Draw a verified badge."""
-        badge_color = (29, 155, 240)
-        draw.ellipse([(x, y), (x + size, y + size)], fill=badge_color)
-        lw = max(2, size // 10)
-        # Checkmark
-        draw.line([(x + size * 0.25, y + size * 0.5), (x + size * 0.4, y + size * 0.7)],
-                  fill=(255, 255, 255), width=lw)
-        draw.line([(x + size * 0.4, y + size * 0.7), (x + size * 0.75, y + size * 0.3)],
-                  fill=(255, 255, 255), width=lw)
-
-    def _draw_retweet_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-        """Draw retweet icon."""
-        color = self.theme['icon']
-        lw = max(2, size // 6)
-
-        # Two arrows
-        # Left arrow pointing up
-        cx1, cy1 = x + size * 0.25, y + size * 0.2
-        draw.polygon([(cx1, cy1), (cx1 - size*0.1, cy1 + size*0.15), (cx1 + size*0.1, cy1 + size*0.15)], fill=color)
-        draw.line([(cx1, cy1 + size*0.15), (cx1, cy1 + size*0.6)], fill=color, width=lw)
-
-        # Right arrow pointing down
-        cx2, cy2 = x + size * 0.75, y + size * 0.8
-        draw.polygon([(cx2, cy2), (cx2 - size*0.1, cy2 - size*0.15), (cx2 + size*0.1, cy2 - size*0.15)], fill=color)
-        draw.line([(cx2, cy2 - size*0.15), (cx2, cy2 - size*0.6)], fill=color, width=lw)
-
-    def _draw_like_icon(self, draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-        """Draw like icon (heart)."""
-        color = self.theme['icon']
-        lw = max(2, size // 6)
-
-        # Simple heart shape
-        cx, cy = x + size / 2, y + size * 0.35
-
-        # Draw heart using lines for simplicity
-        # Left curve
-        draw.arc([(x, y), (x + size * 0.5, y + size * 0.5)], start=0, end=180, fill=color, width=lw)
-        # Right curve
-        draw.arc([(x + size * 0.5, y), (x + size, y + size * 0.5)], start=0, end=180, fill=color, width=lw)
-        # Bottom point
-        tip_y = y + size
-        draw.line([(x, y + size * 0.25), (cx, tip_y)], fill=color, width=lw)
-        draw.line([(x + size, y + size * 0.25), (cx, tip_y)], fill=color, width=lw)
 
     async def generate(self, tweet_data) -> str:
         """Generate an image from tweet data."""
-        logger.info(f"Generating image for tweet by {tweet_data.author_name}")
-
-        # Dimensions
-        width = 2000
-        height = 2400
-
+        # High resolution for quality
+        scale = 2  # 2x for retina/high quality
+        width = 600 * scale
+        height = 800 * scale
+        
         img = Image.new('RGB', (width, height), self.theme['background'])
         draw = ImageDraw.Draw(img)
 
-        # Load fonts
-        try:
-            font_name = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 68)
-            font_text = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 78)
-            font_meta = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 42)
-            font_metrics = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 40)
-            font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 36)
-            logger.info("Loaded fonts successfully")
-        except OSError as e:
-            logger.warning(f"Could not load fonts: {e}")
-            font_name = ImageFont.load_default()
-            font_text = font_name
-            font_meta = font_name
-            font_metrics = font_name
-            font_small = font_name
+        # Load fonts (scaled)
+        font_name = self._load_font(17 * scale, bold=True)
+        font_handle = self._load_font(15 * scale)
+        font_text = self._load_font(23 * scale)
+        font_small = self._load_font(14 * scale)
 
-        # Layout
-        padding_side = 110
-        padding_top = 110
-        content_width = width - (2 * padding_side)
-        current_y = padding_top
+        pad = 16 * scale
+        y = pad
 
-        # ========== HEADER ==========
-        avatar_size = 110
-
-        # Avatar
-        avatar_x = padding_side
-        avatar_y = current_y
-
-        logger.debug(f"Loading avatar from: {tweet_data.author_avatar}")
-        avatar_image = await self._load_image(tweet_data.author_avatar, avatar_size)
-        if avatar_image:
-            avatar_image = avatar_image.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+        # === HEADER ===
+        avatar_size = 40 * scale
+        avatar = await self._load_image(tweet_data.author_avatar, avatar_size * 2)
+        
+        if avatar:
+            avatar = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
             mask = Image.new('L', (avatar_size, avatar_size), 0)
-            mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse([(0, 0), (avatar_size, avatar_size)], fill=255)
-            avatar_layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
-            avatar_layer.paste(avatar_image, (avatar_x, avatar_y), mask)
-            img.paste(avatar_layer, (0, 0), avatar_layer.convert('L'))
+            ImageDraw.Draw(mask).ellipse((0, 0, avatar_size-1, avatar_size-1), fill=255)
+            img.paste(avatar, (pad, y), mask)
         else:
-            initials = self._get_initials(tweet_data.author_name)
-            draw.ellipse([avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size],
-                        fill=self.theme['accent'])
-            bbox = draw.textbbox((0, 0), initials, font=font_name)
-            text_x = avatar_x + (avatar_size - (bbox[2] - bbox[0])) // 2
-            text_y = avatar_y + (avatar_size - (bbox[3] - bbox[1])) // 2
-            draw.text((text_x, text_y), initials, fill=(255, 255, 255), font=font_name)
+            draw.ellipse((pad, y, pad + avatar_size, y + avatar_size), fill=self.theme['link'])
 
-        # Author info
-        text_x = avatar_x + avatar_size + 20
-        text_y = current_y + 10
+        # Name + badge
+        name_x = pad + avatar_size + 10 * scale
+        draw.text((name_x, y), tweet_data.author_name, fill=self.theme['text'], font=font_name)
+        name_w = draw.textbbox((0, 0), tweet_data.author_name, font=font_name)[2]
+        
+        # Verified badge right after name
+        badge_x = name_x + name_w + 4 * scale
+        badge_y = y + 4 * scale
+        badge_r = 9 * scale
+        draw.ellipse((badge_x, badge_y, badge_x + badge_r*2, badge_y + badge_r*2), fill=(29, 155, 240))
+        # Checkmark
+        cx, cy = badge_x + badge_r, badge_y + badge_r
+        draw.line([(cx - 5*scale, cy), (cx - 1*scale, cy + 4*scale), (cx + 5*scale, cy - 4*scale)], fill=(255,255,255), width=2*scale)
 
-        # Name
-        draw.text((text_x, text_y), tweet_data.author_name, fill=self.theme['text'], font=font_name)
-        name_bbox = draw.textbbox((text_x, text_y), tweet_data.author_name, font=font_name)
-        name_width = name_bbox[2] - name_bbox[0]
+        # Username
+        draw.text((name_x, y + 24 * scale), tweet_data.author_username, fill=self.theme['secondary'], font=font_handle)
 
-        # Verified badge
-        self._draw_verified_badge(draw, text_x + name_width + 10, text_y + 8, 30)
+        y += avatar_size + 16 * scale
 
-        # Username + date
-        meta_y = text_y + 82
+        # === TWEET TEXT ===
+        y = self._draw_text(draw, tweet_data.text, pad, y, width - pad*2, font_text, scale)
+        y += 16 * scale
+
+        # === DATE + VIEWS ===
         date_str = self._format_date(tweet_data.created_at)
-        meta_text = f"{tweet_data.author_username} · {date_str}"
-        draw.text((text_x, meta_y), meta_text, fill=self.theme['secondary_text'], font=font_meta)
+        views = self._fmt_num(tweet_data.views) if tweet_data.views else None
+        meta = f"{date_str} · {views} Views" if views else date_str
+        draw.text((pad, y), meta, fill=self.theme['secondary'], font=font_small)
+        y += 28 * scale
 
-        current_y += avatar_size + 65
+        # === DIVIDER ===
+        draw.line((pad, y, width - pad, y), fill=self.theme['divider'], width=scale)
+        y += 16 * scale
 
-        # ========== TWEET TEXT ==========
-        logger.debug(f"Processing tweet text (length: {len(tweet_data.text)})")
-        current_y = self._render_text(draw, tweet_data.text, padding_side, current_y, content_width, font_text)
+        # === METRICS ===
+        parts = []
+        if tweet_data.replies: parts.append(f"{self._fmt_num(tweet_data.replies)} Replies")
+        if tweet_data.retweets: parts.append(f"{self._fmt_num(tweet_data.retweets)} Reposts")
+        if tweet_data.likes: parts.append(f"{self._fmt_num(tweet_data.likes)} Likes")
+        if parts:
+            draw.text((pad, y), " · ".join(parts), fill=self.theme['secondary'], font=font_small)
+            y += 28 * scale
+            draw.line((pad, y, width - pad, y), fill=self.theme['divider'], width=scale)
+            y += 16 * scale
 
-        # ========== IMAGES ==========
+        # === IMAGES ===
         if tweet_data.images:
-            logger.info(f"Processing {len(tweet_data.images)} images")
-            current_y += 30
+            y = await self._draw_images(img, tweet_data.images, pad, y, width - pad*2, scale)
 
-            num_images = min(len(tweet_data.images), 4)
+        # Crop to content
+        final_h = min(y + pad, height)
+        img = img.crop((0, 0, width, final_h))
 
-            if num_images == 1:
-                tweet_image = await self._load_image(tweet_data.images[0], 1200)
-                if tweet_image:
-                    img_width = content_width
-                    img_height = min(1500, int(img_width * (tweet_image.height / tweet_image.width)))
-                    tweet_image = tweet_image.resize((img_width, img_height), Image.Resampling.LANCZOS)
-                    tweet_image = self._add_rounded_corners(tweet_image, 20)
-                    img.paste(tweet_image, (padding_side, current_y), tweet_image)
-                    current_y += img_height + 35
+        # Save at high quality
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        path = os.path.join(self.output_dir, f"tweet_{ts}.png")
+        img.save(path, 'PNG', dpi=(300, 300), optimize=False)
+        return path
 
-            elif num_images == 2:
-                img_w = (content_width - 16) // 2
-                max_h = 850
-                for i, url in enumerate(tweet_data.images[:2]):
-                    tweet_image = await self._load_image(url, 900)
-                    if tweet_image:
-                        img_h = min(max_h, int(img_w * (tweet_image.height / tweet_image.width)))
-                        tweet_image = tweet_image.resize((img_w, img_h), Image.Resampling.LANCZOS)
-                        tweet_image = self._add_rounded_corners(tweet_image, 18)
-                        img.paste(tweet_image, (padding_side + i * (img_w + 16), current_y), tweet_image)
-                current_y += max_h + 35
+    def _load_font(self, size, bold=False):
+        """Load font with fallbacks."""
+        paths = [
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/System/Library/Fonts/Helvetica.ttc',
+        ]
+        for p in paths:
+            try:
+                return ImageFont.truetype(p, size)
+            except:
+                pass
+        return ImageFont.load_default()
 
-            else:
-                img_w = (content_width - 16) // 2
-                max_h = 700
-                for i, url in enumerate(tweet_data.images[:4]):
-                    tweet_image = await self._load_image(url, 900)
-                    if tweet_image:
-                        img_h = min(max_h, int(img_w * (tweet_image.height / tweet_image.width)))
-                        tweet_image = tweet_image.resize((img_w, img_h), Image.Resampling.LANCZOS)
-                        tweet_image = self._add_rounded_corners(tweet_image, 18)
-                        row = i // 2
-                        col = i % 2
-                        img.paste(tweet_image,
-                                (padding_side + col * (img_w + 16), current_y + row * (max_h + 16)),
-                                tweet_image)
-                current_y += (max_h * 2) + 50
-
-        # ========== METRICS BAR ==========
-        current_y += 45
-
-        # Divider line
-        draw.line([padding_side, current_y, width - padding_side, current_y],
-                 fill=self.theme['divider'], width=1)
-        current_y += 55
-
-        # Format numbers
-        retweets = self._format_number(tweet_data.retweets)
-        likes = self._format_number(tweet_data.likes)
-
-        # Draw retweet
-        icon_size = 28
-        self._draw_retweet_icon(draw, padding_side + 20, current_y, icon_size)
-        draw.text((padding_side + 20 + icon_size + 10, current_y + 4), retweets,
-                 fill=self.theme['secondary_text'], font=font_metrics)
-
-        # Draw like
-        like_x = padding_side + content_width // 2 + 20
-        self._draw_like_icon(draw, like_x, current_y, icon_size)
-        draw.text((like_x + icon_size + 10, current_y + 4), likes,
-                 fill=self.theme['secondary_text'], font=font_metrics)
-
-        current_y += 75
-
-        # ========== BOTTOM BRANDING ==========
-        logo_size = 26
-        self._draw_x_logo(draw, padding_side, current_y, logo_size)
-
-        branding_text = "Posted on X"
-        draw.text((padding_side + logo_size + 10, current_y + 4), branding_text,
-                 fill=self.theme['secondary_text'], font=font_small)
-
-        # Date on right
-        date_final = self._format_date_full(tweet_data.created_at)
-        date_bbox = draw.textbbox((0, 0), date_final, font=font_small)
-        date_width = date_bbox[2] - date_bbox[0]
-        draw.text((width - padding_side - date_width, current_y + 4), date_final,
-                 fill=self.theme['secondary_text'], font=font_small)
-
-        # Save
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"tweet_{timestamp}_{self.theme_name}.png"
-        filepath = os.path.join(self.output_dir, filename)
-        logger.info(f"Saving image to: {filepath}")
-        img.save(filepath, 'PNG', dpi=(300, 300))
-        logger.info("Image saved successfully")
-
-        return filepath
-
-    def _render_text(self, draw: ImageDraw.ImageDraw, text: str, x: int, y: int,
-                     max_width: int, font) -> int:
-        """Render tweet text preserving original formatting."""
-        # Normalize line breaks
+    def _draw_text(self, draw, text, x, y, max_w, font, scale=1):
+        """Draw tweet text with minimal line spacing."""
         text = text.replace('\r\n', '\n').replace('\r', '\n')
-
-        # Split by explicit line breaks
-        lines = text.split('\n')
-        line_height = 105
-
-        for line in lines:
-            if not line.strip():
-                # Empty line
-                y += line_height * 0.5
+        
+        # Get font metrics for line height
+        bbox = draw.textbbox((0, 0), "Ay", font=font)
+        line_h = int((bbox[3] - bbox[1]) * 1.4)  # Proper line spacing
+        para_gap = 8 * scale  # Gap between paragraphs
+        
+        for para in text.split('\n'):
+            if not para.strip():
+                y += para_gap  # Small gap for empty lines
                 continue
-
-            # Parse entities in this line
-            parts = self._parse_text_entities(line)
-
-            # Render parts with color
-            current_x = x
-            current_line_parts = []
-            line_width = 0
-
-            for part_text, part_type in parts:
-                color = self.theme['link'] if part_type in ('mention', 'hashtag', 'url') else self.theme['text']
-                bbox = draw.textbbox((0, 0), part_text, font=font)
-                part_width = bbox[2] - bbox[0]
-
-                if line_width + part_width <= max_width:
-                    current_line_parts.append((part_text, current_x, color))
-                    line_width += part_width
-                    current_x += part_width
+            
+            # Word wrap
+            words = para.split()
+            line = ""
+            for word in words:
+                test = f"{line} {word}".strip()
+                if draw.textbbox((0, 0), test, font=font)[2] <= max_w:
+                    line = test
                 else:
-                    # Line too long - render current and start new line
-                    for p_text, p_x, p_color in current_line_parts:
-                        draw.text((p_x, y), p_text, fill=p_color, font=font)
-                    y += line_height
-                    current_x = x
-                    line_width = 0
-                    current_line_parts = []
-
-                    # Check if part alone is too long
-                    if part_width > max_width:
-                        # Split long word/URL
-                        words = part_text.split(' ')
-                        for word in words:
-                            w_bbox = draw.textbbox((0, 0), word, font=font)
-                            w_width = w_bbox[2] - w_bbox[0]
-                            if line_width + w_width > max_width:
-                                y += line_height
-                                current_x = x
-                                line_width = 0
-                            draw.text((current_x, y), word, fill=color, font=font)
-                            current_x += w_width
-                            line_width += w_width
-                    else:
-                        current_line_parts.append((part_text, current_x, color))
-                        line_width = part_width
-                        current_x = part_width
-
-            # Render remaining parts
-            for p_text, p_x, p_color in current_line_parts:
-                draw.text((p_x, y), p_text, fill=p_color, font=font)
-            y += line_height
-
+                    if line:
+                        self._draw_line_with_entities(draw, line, x, y, font)
+                        y += line_h
+                    line = word
+            
+            if line:
+                self._draw_line_with_entities(draw, line, x, y, font)
+                y += line_h
+        
         return y
 
-    def _parse_text_entities(self, text: str) -> list[tuple[str, str]]:
-        """Parse text into (text, type) tuples."""
-        parts = []
-        remaining = text
+    def _draw_line_with_entities(self, draw, line, x, y, font):
+        """Draw a line with colored @mentions, #hashtags, URLs."""
+        pattern = r'(@\w+|#\w+|https?://\S+)'
+        parts = re.split(pattern, line)
+        
+        for part in parts:
+            if not part:
+                continue
+            color = self.theme['link'] if re.match(pattern, part) else self.theme['text']
+            draw.text((x, y), part, fill=color, font=font)
+            x += draw.textbbox((0, 0), part, font=font)[2]
 
-        patterns = [
-            (r'https?://\S+', 'url'),
-            (r'@\w+', 'mention'),
-            (r'#\w+', 'hashtag'),
-        ]
+    async def _draw_images(self, img, urls, x, y, max_w, scale=1):
+        """Draw tweet images."""
+        n = min(len(urls), 4)
+        gap = 4 * scale
+        r = 12 * scale
+        
+        if n == 1:
+            tweet_img = await self._load_image(urls[0], 1200)
+            if tweet_img:
+                # Fit width, cap height
+                max_h = 300 * scale
+                img_scale = min(max_w / tweet_img.width, max_h / tweet_img.height, 1.0)
+                w, h = int(tweet_img.width * img_scale), int(tweet_img.height * img_scale)
+                tweet_img = tweet_img.resize((w, h), Image.Resampling.LANCZOS)
+                tweet_img = self._round_corners(tweet_img, r)
+                img.paste(tweet_img, (x, y), tweet_img)
+                y += h + 12 * scale
+        elif n == 2:
+            iw = (max_w - gap) // 2
+            ih = 150 * scale
+            for i, url in enumerate(urls[:2]):
+                tweet_img = await self._load_image(url, 600)
+                if tweet_img:
+                    tweet_img = self._crop_fit(tweet_img, iw, ih)
+                    tweet_img = self._round_corners(tweet_img, r)
+                    img.paste(tweet_img, (x + i * (iw + gap), y), tweet_img)
+            y += ih + 12 * scale
+        else:
+            iw = (max_w - gap) // 2
+            ih = 120 * scale
+            for i, url in enumerate(urls[:4]):
+                tweet_img = await self._load_image(url, 500)
+                if tweet_img:
+                    tweet_img = self._crop_fit(tweet_img, iw, ih)
+                    tweet_img = self._round_corners(tweet_img, r)
+                    row, col = divmod(i, 2)
+                    img.paste(tweet_img, (x + col * (iw + gap), y + row * (ih + gap)), tweet_img)
+            rows = (min(n, 4) + 1) // 2
+            y += rows * ih + (rows - 1) * gap + 12 * scale
+        
+        return y
 
-        while remaining:
-            earliest_match = None
-            earliest_pos = len(remaining)
-            match_type = None
+    def _crop_fit(self, img, w, h):
+        """Center crop to fit dimensions."""
+        scale = max(w / img.width, h / img.height)
+        nw, nh = int(img.width * scale), int(img.height * scale)
+        img = img.resize((nw, nh), Image.Resampling.LANCZOS)
+        left, top = (nw - w) // 2, (nh - h) // 2
+        return img.crop((left, top, left + w, top + h))
 
-            for pattern, entity_type in patterns:
-                match = re.search(pattern, remaining)
-                if match and match.start() < earliest_pos:
-                    earliest_match = match
-                    earliest_pos = match.start()
-                    match_type = entity_type
-
-            if earliest_match:
-                if earliest_pos > 0:
-                    parts.append((remaining[:earliest_pos], 'text'))
-                parts.append((earliest_match.group(0), match_type))
-                remaining = remaining[earliest_match.end():]
-            else:
-                if remaining:
-                    parts.append((remaining, 'text'))
-                break
-
-        return parts
-
-    def _add_rounded_corners(self, img: Image.Image, radius: int) -> Image.Image:
+    def _round_corners(self, img, r):
         """Add rounded corners."""
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
         mask = Image.new('L', img.size, 0)
-        draw = ImageDraw.Draw(mask)
-        draw.rounded_rectangle([(0, 0), img.size], radius=radius, fill=255)
-        output = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        output.paste(img, (0, 0))
-        output.putalpha(mask)
-        return output
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, img.width-1, img.height-1), r, fill=255)
+        out = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        out.paste(img, (0, 0))
+        out.putalpha(mask)
+        return out
 
-    def _get_initials(self, name: str) -> str:
-        """Get initials from name."""
-        parts = name.strip().split()
-        if len(parts) >= 2:
-            return f"{parts[0][0].upper()}{parts[1][0].upper()}"
-        return name[:2].upper() if len(name) >= 2 else name[:1].upper()
-
-    def _format_date(self, date_str: str) -> str:
-        """Format date short."""
-        if not date_str:
+    def _format_date(self, s):
+        """Format date string."""
+        if not s:
             return ''
         try:
-            from datetime import datetime as dt
-            parsed = dt.strptime(date_str, "%a %b %d %H:%M:%S %z %Y")
-            return parsed.strftime("%b %d, %Y")
-        except (ValueError, AttributeError):
-            return date_str[:12] if len(date_str) > 12 else date_str
+            d = datetime.strptime(s, "%a %b %d %H:%M:%S %z %Y")
+            return d.strftime("%I:%M %p · %b %d, %Y").lstrip('0')
+        except:
+            return s[:20]
 
-    def _format_date_full(self, date_str: str) -> str:
-        """Format date full."""
-        if not date_str:
-            return ''
-        try:
-            from datetime import datetime as dt
-            parsed = dt.strptime(date_str, "%a %b %d %H:%M:%S %z %Y")
-            return parsed.strftime("%B %d, %Y at %I:%M %p")
-        except (ValueError, AttributeError):
-            return date_str
-
-    def _format_number(self, num: int) -> str:
+    def _fmt_num(self, n):
         """Format number."""
-        if num >= 1000000:
-            return f'{num / 1000000:.1f}M'
-        elif num >= 1000:
-            return f'{num / 1000:.1f}K'
-        return str(num)
+        if not n:
+            return '0'
+        n = int(n)
+        if n >= 1_000_000:
+            return f'{n/1_000_000:.1f}M'
+        if n >= 1_000:
+            return f'{n/1_000:.1f}K'
+        return str(n)
 
-    async def _load_image(self, url: Optional[str], size: int) -> Optional[Image.Image]:
+    async def _load_image(self, url, size):
         """Load image from URL."""
         if not url:
             return None
-
         try:
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as response:
-                    if response.status == 200:
-                        image_data = await response.read()
-                        img = Image.open(BytesIO(image_data))
-                        if img.mode != 'RGBA':
-                            img = img.convert('RGBA')
-                        return img
-        except Exception as e:
-            logger.debug(f"Error loading image: {e}")
-
+            async with aiohttp.ClientSession() as s:
+                async with s.get(url, timeout=aiohttp.ClientTimeout(total=10)) as r:
+                    if r.status == 200:
+                        return Image.open(BytesIO(await r.read())).convert('RGBA')
+        except:
+            pass
         return None

@@ -47,8 +47,13 @@ class TweetExtractor:
         return match.group(1) if match else None
 
     def _clean_text(self, text: str) -> str:
-        """Clean tweet text from extra whitespace and formatting."""
-        return ' '.join(text.split())
+        """Clean tweet text while preserving line breaks."""
+        # Normalize line breaks
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        # Clean each line individually, preserving line breaks
+        lines = text.split('\n')
+        cleaned_lines = [' '.join(line.split()) for line in lines]
+        return '\n'.join(cleaned_lines)
 
     def _format_date(self, date_str: str) -> str:
         """Format date from FixTweet API response."""
