@@ -15,6 +15,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY uv.lock ./
 COPY .python-version ./
+COPY README.md ./
 COPY wallofx/ ./wallofx/
 COPY run.py ./
 
