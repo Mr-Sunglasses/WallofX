@@ -3,7 +3,9 @@ import re
 import os
 import logging
 from typing import Optional
+from datetime import datetime
 
+import aiohttp
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -45,11 +47,12 @@ class WallOfXBot:
             "1. Find a tweet on Twitter/X\n"
             "2. Copy the tweet URL\n"
             "3. Paste and send it here\n"
-            "4. Get your image!\n\n"
+            "4. Get your image and video!\n\n"
             "Supported URLs:\n"
             "twitter.com/user/status/...\n"
             "x.com/user/status/...\n\n"
-            "The images are high resolution (300 DPI) - perfect for printing or sharing."
+            "The images are high resolution (300 DPI) - perfect for printing or sharing.\n"
+            "If the tweet contains a video, I will also send it to you."
         )
         await update.message.reply_text(help_message)
         logger.info(f"User {update.effective_user.id} sent /help")
@@ -100,9 +103,6 @@ class WallOfXBot:
             image_path = await self.image_generator.generate(tweet_data)
             logger.info(f"Image generated at: {image_path}")
 
-            # Delete status message
-            await status_message.delete()
-
             # Send the generated image
             caption_text = tweet_data.text[:150]
             if len(tweet_data.text) > 150:
@@ -115,9 +115,47 @@ class WallOfXBot:
                 )
             logger.info(f"Image sent successfully to user {update.effective_user.id}")
 
+            # Handle videos if present
+            if tweet_data.videos:
+                await self.process_videos(update, tweet_data)
+
+            # Delete status message
+            await status_message.delete()
+
         except Exception as e:
             logger.exception(f"Error processing tweet: {e}")
             await status_message.edit_text("Something went wrong. Please try again later.")
+
+    async def process_videos(self, update: Update, tweet_data) -> None:
+        """Download and send videos from a tweet."""
+        for i, video_url in enumerate(tweet_data.videos):
+            try:
+                logger.info(f"Downloading video: {video_url}")
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(video_url) as response:
+                        if response.status == 200:
+                            video_data = await response.read()
+                            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+                            output_dir = 'wallofx/static/output'
+                            os.makedirs(output_dir, exist_ok=True)
+                            video_path = os.path.join(output_dir, f"video_{ts}_{i}.mp4")
+                            
+                            with open(video_path, 'wb') as f:
+                                f.write(video_data)
+                            
+                            logger.info(f"Sending video: {video_path}")
+                            with open(video_path, 'rb') as f:
+                                await update.message.reply_video(
+                                    video=f,
+                                    caption=f"Video from @{tweet_data.author_username.lstrip('@')}"
+                                )
+                            # Cleanup
+                            if os.path.exists(video_path):
+                                os.remove(video_path)
+                        else:
+                            logger.error(f"Failed to download video, status: {response.status}")
+            except Exception as e:
+                logger.exception(f"Error processing video {video_url}: {e}")
 
     def run(self):
         """Start the bot."""

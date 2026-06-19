@@ -20,6 +20,7 @@ class TweetData:
     text: str
     created_at: str
     images: list[str]
+    videos: list[str]
     likes: int
     retweets: int
     replies: int
@@ -147,10 +148,15 @@ class TweetExtractor:
         author = tweet.get('author', {})
         media = tweet.get('media', {})
         photos = media.get('photos', [])
+        videos = media.get('videos', [])
 
         # Extract image URLs from photos
         images = [photo.get('url', '') for photo in photos if photo.get('url')]
         logger.info(f"Extracted {len(images)} images from tweet")
+
+        # Extract video URLs from videos
+        video_urls = [video.get('url', '') for video in videos if video.get('url')]
+        logger.info(f"Extracted {len(video_urls)} videos from tweet")
 
         tweet_data = TweetData(
             url=tweet.get('url', original_url),
@@ -160,11 +166,12 @@ class TweetExtractor:
             text=self._clean_text(tweet.get('text', '')),
             created_at=self._format_date(tweet.get('created_at', '')),
             images=images,
+            videos=video_urls,
             likes=tweet.get('likes', 0),
             retweets=tweet.get('retweets', 0),
             replies=tweet.get('replies', 0),
             views=tweet.get('views'),
         )
 
-        logger.info(f"Successfully parsed tweet data: author={tweet_data.author_name}, likes={tweet_data.likes}")
+        logger.info(f"Successfully parsed tweet data: author={tweet_data.author_name}, likes={tweet_data.likes}, videos={len(tweet_data.videos)}")
         return tweet_data
